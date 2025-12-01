@@ -11,8 +11,8 @@
 #include <utility>
 #include <vector>
 
-#include "nesterovBase.h"
-#include "placerBase.h"
+#include "gpl/nesterovBase.h"
+#include "gpl/placerBase.h"
 #include "rsz/Resizer.hh"
 #include "sta/Fuzzy.hh"
 #include "utl/Logger.h"

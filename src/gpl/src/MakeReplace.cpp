@@ -4,8 +4,8 @@
 #include "gpl/MakeReplace.h"
 
 #include "gpl/Replace.h"
-#include "graphicsImpl.h"
-#include "graphicsNone.h"
+#include "gpl/graphicsImpl.h"
+#include "gpl/graphicsNone.h"
 #include "gui/gui.h"
 #include "tcl.h"
 #include "utl/Logger.h"

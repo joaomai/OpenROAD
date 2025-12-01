@@ -21,7 +21,7 @@
 #include "gpl/Replace.h"
 #include "odb/db.h"
 #include "placerBase.h"
-#include "point.h"
+#include "gpl/point.h"
 #include "routeBase.h"
 #include "utl/Logger.h"
 namespace odb {

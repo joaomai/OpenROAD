@@ -9,10 +9,10 @@
 #include <string>
 #include <vector>
 
-#include "AbstractGraphics.h"
-#include "nesterovBase.h"
+#include "gpl/AbstractGraphics.h"
+#include "gpl/nesterovBase.h"
 #include "odb/dbBlockCallBackObj.h"
-#include "point.h"
+#include "gpl/point.h"
 #include "utl/prometheus/gauge.h"
 
 namespace utl {

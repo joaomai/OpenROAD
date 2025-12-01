@@ -11,9 +11,9 @@
 #include <utility>
 #include <vector>
 
-#include "AbstractGraphics.h"
+#include "gpl/AbstractGraphics.h"
 #include "odb/dbTypes.h"
-#include "placerBase.h"
+#include "gpl/placerBase.h"
 #include "solver.h"
 #include "utl/Logger.h"
 

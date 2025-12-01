@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-#include "AbstractGraphics.h"
+#include "gpl/AbstractGraphics.h"
 #include "db_sta/dbNetwork.hh"
 #include "db_sta/dbSta.hh"
 #include "odb/db.h"

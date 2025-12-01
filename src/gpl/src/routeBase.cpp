@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2018-2025, The OpenROAD Authors
 
-#include "routeBase.h"
+#include "gpl/routeBase.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,7 +15,7 @@
 
 #include "grt/GlobalRouter.h"
 #include "grt/Rudy.h"
-#include "nesterovBase.h"
+#include "gpl/nesterovBase.h"
 #include "odb/db.h"
 #include "odb/dbTypes.h"
 #include "utl/Logger.h"

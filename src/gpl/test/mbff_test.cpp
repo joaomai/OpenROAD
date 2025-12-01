@@ -16,7 +16,7 @@
 #include "gtest/gtest.h"
 #include "odb/db.h"
 #include "rsz/Resizer.hh"
-#include "src/gpl/src/graphicsNone.h"
+#include "gpl/graphicsNone.h"
 #include "stt/SteinerTreeBuilder.h"
 #include "tst/fixture.h"
 #include "utl/CallBackHandler.h"

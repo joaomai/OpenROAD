@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2020-2025, The OpenROAD Authors
 
-#include "graphicsNone.h"
+#include "gpl/graphicsNone.h"
 
 namespace gpl {
 
