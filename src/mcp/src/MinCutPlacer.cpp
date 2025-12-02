@@ -4,8 +4,10 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <numeric>
 #include <random>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -75,6 +77,7 @@ bool MinCutPlacer::initPlacer()
 void MinCutPlacer::setGraphicsInterface(const gpl::AbstractGraphics& graphics)
 {
   graphics_ = graphics.MakeNew(log_);
+  graphics_->setDebugOn(true);
 }
 
 
@@ -123,6 +126,13 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
       }
     }
 
+    InstanceVec freeA, freeB;
+    for (auto& inst : vertices) {
+      if (!locked[inst]) {
+        (part[inst] == 0 ? freeA : freeB).push_back(inst);
+      }
+    }
+
     std::vector<Move> moves;
 
     for (int step = 0; step < n / 2; step++) {
@@ -130,12 +140,13 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
       gpl::Instance* bestB = nullptr;
       int bestGain = std::numeric_limits<int>::min();
 
-      for (auto& a : vertices) {
-        if (!locked[a] && part[a] == 0) {
-          for (auto& b : vertices) {
-            if (!locked[b] && part[b] == 1) {
-              int gain = D[a] + D[b] - (2*(adj.at(a).contains(b) ? adj.at(a).at(b) : 0));
-
+      for (auto& a : freeA) {
+        if (!locked[a]) {
+          for (auto& b : freeB) {
+            if (!locked[b]) {
+              auto& adjA = adj.at(a);
+              int gain = D[a] + D[b]
+                         - (2 * (adjA.contains(b) ? adjA.at(b) : 0));
               if (gain > bestGain) {
                 bestGain = gain;
                 bestA = a;
@@ -151,7 +162,8 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
       }
 
       // Lock and record move
-      locked[bestA] = locked[bestB] = true;
+      locked[bestA] = true;
+      locked[bestB] = true;
       moves.push_back({bestA, bestB, bestGain});
 
       int partA_old = part[bestA];
@@ -159,8 +171,8 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
       part[bestA] = 1;
       part[bestB] = 0;
       // update D values
-      for (auto& [u, map] : adj) if (!locked[u]) {
-          for (auto& [v, _] : map) {
+      for (auto& u : vertices) if (!locked[u]) {
+          for (auto& [v, w] : adj.at(u)) {
               if (v == bestA) D[u] += (part[u] == partA_old ? 2 : -2);
               if (v == bestB) D[u] += (part[u] == partB_old ? 2 : -2);
           }
@@ -222,12 +234,12 @@ void MinCutPlacer::KLRecursion(const InstanceGraph& adj, const InstanceVec& vert
   odb::Rect rA, rB;
   if (vertical) {
     int bissect_location = 0;
-    if (false || compact_) {
+    if (compact_) {
       bissect_location = region.xMin() + (area_a / region.dy());
     } else {
       bissect_location = region.xCenter();
     }
-    if (graphics_) {
+    if (graphics_ && graphics_->enabled()) {
       graphics_->drawLine(odb::Line(bissect_location, region.yMin(), bissect_location, region.yMax()));
     }
     rA = odb::Rect(
@@ -236,12 +248,12 @@ void MinCutPlacer::KLRecursion(const InstanceGraph& adj, const InstanceVec& vert
         bissect_location, region.yMin(), region.xMax(), region.yMax());
   } else {
     int bissect_location = 0;
-    if (false || compact_) {
+    if (compact_) {
       bissect_location = region.yMin() + (area_a / region.dx());
     } else {
       bissect_location = region.yCenter();
     }
-    if (graphics_) {
+    if (graphics_ && graphics_->enabled()) {
       graphics_->drawLine(odb::Line(region.xMin(), bissect_location, region.xMax(), bissect_location));
     }
     rA = odb::Rect(
@@ -249,11 +261,12 @@ void MinCutPlacer::KLRecursion(const InstanceGraph& adj, const InstanceVec& vert
     rB = odb::Rect(
         region.xMin(), bissect_location, region.xMax(), region.yMax());
   }
-  graphics_->cellPlot(true);
+
+  if (graphics_ && graphics_->enabled()) graphics_->cellPlot(true);
   KLRecursion(adj, A, rA, depth + 1, pos);
-  graphics_->cellPlot(true);
+  if (graphics_ && graphics_->enabled()) graphics_->cellPlot(true);
   KLRecursion(adj, B, rB, depth + 1, pos);
-  graphics_->cellPlot(true);
+  if (graphics_ && graphics_->enabled()) graphics_->cellPlot(true);
 }
 
 void MinCutPlacer::KernighanLinPlacement(int threads, bool compact) {

@@ -45,7 +45,6 @@ class MinCutPlacer
   struct Move { gpl::Instance *a, *b; int gain; };
   struct Partition { InstanceMap part; int cuts; };
 
-  void exactPlacement(const InstanceGraph& adj, const InstanceVec& vertices, const odb::Rect& region);
   int KLCountCut(const InstanceGraph& adj, const InstanceVec& vertices, const InstanceMap& part);
   Partition KLPartitioner(const InstanceGraph& adj, const InstanceVec& vertices);
   void KLRecursion(const InstanceGraph& adj, const InstanceVec& vertices, const odb::Rect& region, int depth, std::vector<std::pair<int, int>>& pos);
