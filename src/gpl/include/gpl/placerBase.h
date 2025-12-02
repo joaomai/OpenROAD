@@ -269,11 +269,12 @@ class Die
 
 struct PlacerBaseVars
 {
+  PlacerBaseVars() = default;
   PlacerBaseVars(const PlaceOptions& options);
 
-  const int padLeft;
-  const int padRight;
-  const bool skipIoMode;
+  const int padLeft = 0;
+  const int padRight = 0;
+  const bool skipIoMode = false;
 };
 
 // Class includes everything from PlacerBase that is not region specific

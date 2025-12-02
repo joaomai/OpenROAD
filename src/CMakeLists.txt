@@ -260,6 +260,7 @@ add_subdirectory(rsz)
 add_subdirectory(tst)
 add_subdirectory(stt)
 add_subdirectory(gpl)
+add_subdirectory(mcp)
 add_subdirectory(dpl)
 add_subdirectory(exa)
 add_subdirectory(fin)
@@ -324,6 +325,7 @@ target_link_libraries(openroad
   pad
   ord
   gpl
+  mcp
   dpl
   exa
   fin

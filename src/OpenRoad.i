@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2019-2025, The OpenROAD Authors
 
+#include "mcp/include/epl/MinCutPlacer.h"
 %{
 
 #include "odb/db.h"
@@ -127,6 +128,13 @@ getReplace()
 {
   OpenRoad *openroad = getOpenRoad();
   return openroad->getReplace();
+}
+
+mcp::MinCutPlacer*
+getMinCutPlacer()
+{
+  OpenRoad *openroad = getOpenRoad();
+  return openroad->getMinCutPlacer();
 }
 
 rcx::Ext *
