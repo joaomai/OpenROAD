@@ -56,6 +56,8 @@ class AbstractGraphics
 
   // Draw the graphics; optionally pausing afterwards
   void cellPlot(bool pause = false) { cellPlotImpl(pause); }
+  
+  virtual void drawLine(odb::Line line) = 0;
 
   // Update the chart for the current iter
   virtual void addIter(int iter, double overflow) = 0;

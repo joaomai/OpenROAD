@@ -18,6 +18,9 @@
 
 #include "mcp/MinCutPlacer.h"
 #include "odb/db.h"
+#include "gui/gui.h"
+#include "gpl/graphicsImpl.h"
+#include "gpl/graphicsNone.h"
 #include "utl/decode.h"
 
 extern "C" {
@@ -34,6 +37,15 @@ void initMinCutPlacer(Tcl_Interp* tcl_interp)
 {
   Mcp_Init(tcl_interp);
   utl::evalTclInit(tcl_interp, mcp::mcp_tcl_inits);
+}
+
+void initMinCutPlacerGraphics(MinCutPlacer* min_cut_placer, utl::Logger* log)
+{
+  if (gui::Gui::get() == nullptr) {
+    min_cut_placer->setGraphicsInterface(gpl::GraphicsNone());
+  } else {
+    min_cut_placer->setGraphicsInterface(gpl::GraphicsImpl(log));
+  }
 }
 
 }  // namespace mcp

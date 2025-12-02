@@ -20,9 +20,6 @@
 #ifndef MAKE_MCP_H
 #define MAKE_MCP_H
 
-namespace odb {
-class dbDatabase;
-}
 namespace utl {
 class Logger;
 }
@@ -30,9 +27,8 @@ class Logger;
 namespace mcp {
 class MinCutPlacer;
 
-class OpenRoad;
-
 void initMinCutPlacer(Tcl_Interp* tcl_interp);
+void initMinCutPlacerGraphics(MinCutPlacer* min_cut_placer, utl::Logger* log);
 
 }  // namespace mcp
 #endif

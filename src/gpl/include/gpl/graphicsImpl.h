@@ -77,6 +77,8 @@ class GraphicsImpl : public gpl::AbstractGraphics,
   void deleteLabel(std::string_view label_name) override;
   void gifEnd() override;
 
+  void drawLine(odb::Line line) override;
+
  protected:
   void cellPlotImpl(bool pause) override;
 
@@ -174,6 +176,7 @@ class GraphicsImpl : public gpl::AbstractGraphics,
   gui::Chart* phi_chart_{nullptr};
   gui::Chart* stepLength_chart_{nullptr};
   bool debug_on_ = false;
+  std::vector<odb::Line> cut_lines_;
 
   void initHeatmap();
   void drawNesterov(gui::Painter& painter);

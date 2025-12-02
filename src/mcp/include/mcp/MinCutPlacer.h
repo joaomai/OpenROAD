@@ -17,16 +17,17 @@
 #pragma once
 
 #include <random>
-#include <unordered_map>
-#include <vector>
 
+#include "gpl/AbstractGraphics.h"
 #include "gpl/placerBase.h"
 #include "odb/db.h"
 #include "gpl/Replace.h"
 
 namespace mcp {
 
-using Graph = std::vector<std::vector<int>>;
+using InstanceGraph = std::unordered_map<gpl::Instance*, std::unordered_map<gpl::Instance*, int>>;
+using InstanceVec = std::vector<gpl::Instance*>;
+using InstanceMap = std::unordered_map<gpl::Instance*, int>;
 
 class MinCutPlacer
 {
@@ -36,20 +37,22 @@ class MinCutPlacer
   
   void clear();
   bool initPlacer();
+  void setGraphicsInterface(const gpl::AbstractGraphics& graphics);
   void randomPlace(int threads);
   void KernighanLinPlacement(int threads, bool compact);
 
  private:
-  struct Move { int a, b, gain; };
-  struct Partition { std::vector<int> part; int cuts; };
+  struct Move { gpl::Instance *a, *b; int gain; };
+  struct Partition { InstanceMap part; int cuts; };
 
-  void exactPlacement(const Graph& adj, const std::vector<int>& vertices, const odb::Rect& region);
-  int KLCountCut(const Graph& adj, const std::vector<int>& part);
-  Partition KLPartitioner(const Graph& adj, const std::vector<int>& map_to_orig);
-  void KLRecursion(const Graph& adj, const std::vector<int>& vertices, const odb::Rect& region, int depth, std::vector<std::pair<int, int>>& pos);
+  void exactPlacement(const InstanceGraph& adj, const InstanceVec& vertices, const odb::Rect& region);
+  int KLCountCut(const InstanceGraph& adj, const InstanceVec& vertices, const InstanceMap& part);
+  Partition KLPartitioner(const InstanceGraph& adj, const InstanceVec& vertices);
+  void KLRecursion(const InstanceGraph& adj, const InstanceVec& vertices, const odb::Rect& region, int depth, std::vector<std::pair<int, int>>& pos);
 
   odb::dbDatabase* db_;
   utl::Logger* log_;
+  std::unique_ptr<gpl::AbstractGraphics> graphics_;
 
   std::shared_ptr<gpl::PlacerBaseCommon> pbc_;
   std::vector<std::shared_ptr<gpl::PlacerBase>> pbVec_;

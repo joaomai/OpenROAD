@@ -55,7 +55,8 @@ class GraphicsNone : public AbstractGraphics
   void gifStart(std::string_view path) override {};
   void deleteLabel(std::string_view label_name) override {}
   void gifEnd() override {}
-
+  void drawLine(odb::Line line) override {};
+  
  protected:
   void cellPlotImpl(bool pause) override {}
 

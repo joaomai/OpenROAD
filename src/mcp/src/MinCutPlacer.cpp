@@ -11,6 +11,9 @@
 
 #include "gpl/placerBase.h"
 #include "gpl/nesterovBase.h"
+#include "gpl/graphicsImpl.h"
+#include "gpl/graphicsNone.h"
+#include "gui/gui.h"
 #include "odb/geom.h"
 #include "sta/StaMain.hh"
 #include "odb/util.h"
@@ -69,46 +72,53 @@ bool MinCutPlacer::initPlacer()
   return true;
 }
 
-inline int MinCutPlacer::KLCountCut(const Graph& adj, const std::vector<int>& part) 
+void MinCutPlacer::setGraphicsInterface(const gpl::AbstractGraphics& graphics)
+{
+  graphics_ = graphics.MakeNew(log_);
+}
+
+
+inline int MinCutPlacer::KLCountCut(const InstanceGraph& adj, const InstanceVec& vertices, const InstanceMap& part) 
 {
   int cut = 0;
-  for (int u = 0; u < adj.size(); ++u) {
-    for (int v : adj[u]) {
-      cut += (part[u] != part[v]);
+  for (auto& u : vertices) {
+    for (auto& v : vertices) {
+      if (adj.at(u).contains(v)) {
+        cut += (part.at(u) != part.at(v)) * adj.at(u).at(v);
+      }
     }
   }
   return cut / 2;
 }
 
-MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const Graph& adj, const std::vector<int>& map_to_orig)
+MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, const InstanceVec& vertices)
 {
-  const int n = adj.size();
-  std::vector<int> part(n);
+  const int n = vertices.size();
+  InstanceMap part;
 
-  std::vector<std::pair<int64_t, int>> area_index;
-  for (int i = 0; i < n; i++) {
-    area_index.emplace_back((pbc_->placeInsts()[map_to_orig[i]]->area()), i);;
+  std::vector<std::pair<int64_t, gpl::Instance*>> area_index;
+  for (auto& inst : vertices) {
+    area_index.emplace_back(inst->area(), inst);
   }
+
   std::ranges::sort(area_index);
   for (int i = 0; i < n; i++) {
     part[area_index[i].second] = i % 2;
   }
 
   bool improved = true;
-  int bestCut = KLCountCut(adj, part);
+  int bestCut = KLCountCut(adj, vertices, part);
 
   while (improved) {
     improved = false;
 
-    std::vector<bool> locked(n, false);
-    std::vector<int> D(n, 0);
+    InstanceMap locked;
+    InstanceMap D;
 
-    for (int v = 0; v < n; v++) {
-      for (int u : adj[v]) {
-        if (part[u] == part[v]) {
-          D[v] -= 1;
-        } else {
-          D[v] += 1;
+    for (auto& u : vertices) {
+      for (auto& v : vertices) {
+        if (adj.at(u).contains(v)) {
+          D[u] += (part.at(u) == part.at(v)) ? -1 : 1;
         }
       }
     }
@@ -116,19 +126,15 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const Graph& adj, const std:
     std::vector<Move> moves;
 
     for (int step = 0; step < n / 2; step++) {
-      int bestA = -1, bestB = -1;
+      gpl::Instance* bestA = nullptr;
+      gpl::Instance* bestB = nullptr;
       int bestGain = std::numeric_limits<int>::min();
 
-      for (int a = 0; a < n; a++) {
+      for (auto& a : vertices) {
         if (!locked[a] && part[a] == 0) {
-          for (int b = 0; b < n; b++) {
+          for (auto& b : vertices) {
             if (!locked[b] && part[b] == 1) {
-              int w = 0;
-              if (std::ranges::find(adj[a], b) != adj[a].end()) {
-                w = 1;
-              }
-              int gain = D[a] + D[b] - (2*w);
-
+              int gain = D[a] + D[b] - (2*(adj.at(a).contains(b) ? adj.at(a).at(b) : 0));
 
               if (gain > bestGain) {
                 bestGain = gain;
@@ -140,7 +146,7 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const Graph& adj, const std:
         }
       }
 
-      if (bestA == -1) {
+      if (bestA == nullptr) {
         break;
       }
 
@@ -153,10 +159,10 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const Graph& adj, const std:
       part[bestA] = 1;
       part[bestB] = 0;
       // update D values
-      for (int v = 0; v < n; v++) if (!locked[v]) {
-          for (int x : adj[v]) {
-              if (x == bestA) D[v] += (part[v] == partA_old ? 2 : -2);
-              if (x == bestB) D[v] += (part[v] == partB_old ? 2 : -2);
+      for (auto& [u, map] : adj) if (!locked[u]) {
+          for (auto& [v, _] : map) {
+              if (v == bestA) D[u] += (part[u] == partA_old ? 2 : -2);
+              if (v == bestB) D[u] += (part[u] == partB_old ? 2 : -2);
           }
       }
     }
@@ -180,52 +186,35 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const Graph& adj, const std:
       {
         std::swap(part[moves[i].a], part[moves[i].b]);
       }
-      bestCut = KLCountCut(adj, part);
-    } 
+      bestCut = KLCountCut(adj, vertices, part);
+    }
   }
 
   return {.part=part, .cuts=bestCut};
 }
 
-void MinCutPlacer::KLRecursion(const Graph& adj, const std::vector<int>& vertices, const odb::Rect& region, int depth, std::vector<std::pair<int, int>>& pos)
+void MinCutPlacer::KLRecursion(const InstanceGraph& adj, const InstanceVec& vertices, const odb::Rect& region, int depth, std::vector<std::pair<int, int>>& pos)
 {
   if (vertices.empty()) return;
   log_->report("Partition depth = {} vertices = {} rect {}", depth, vertices.size(), region);
   
   if (vertices.size() == 1) {
-      pos[vertices[0]] = {
-          region.xMin(),
-          region.yMin()};
+      vertices[0]->dbSetLocation(region.xMin(), region.yMin());
+      vertices[0]->dbSetPlaced();
       return;
   }
 
-  Graph sub(vertices.size());
-  std::vector<int> mapToOrig(vertices.size());
-  std::vector<int> mapFromOrig(adj.size(), -1);
-
-  for (int i = 0; i < vertices.size(); i++) {
-      mapToOrig[i] = vertices[i];
-      mapFromOrig[vertices[i]] = i;
-  }
-
-  for (int i = 0; i < vertices.size(); i++) {
-      int uOrig = mapToOrig[i];
-      for (int vOrig : adj[uOrig]) {
-          if (mapFromOrig[vOrig] != -1) { sub[i].push_back(mapFromOrig[vOrig]); }
-      }
-  }
-
-  Partition part = KLPartitioner(sub, mapToOrig);
+  Partition part = KLPartitioner(adj, vertices);
 
   int64_t area_a = 0;
-  std::vector<int> A, B;
-  for (int i = 0; i < sub.size(); i++) {
-      if (part.part[i] == 0) { 
-        A.push_back(mapToOrig[i]); 
-        area_a += pbc_->placeInsts()[mapToOrig[i]]->area();
+  InstanceVec A, B;
+  for (auto& inst : vertices) {
+      if (part.part[inst] == 0) { 
+        A.push_back(inst); 
+        area_a += inst->area();
       }
       else { 
-        B.push_back(mapToOrig[i]); 
+        B.push_back(inst); 
       }
   }
   
@@ -233,10 +222,13 @@ void MinCutPlacer::KLRecursion(const Graph& adj, const std::vector<int>& vertice
   odb::Rect rA, rB;
   if (vertical) {
     int bissect_location = 0;
-    if (compact_) {
+    if (false || compact_) {
       bissect_location = region.xMin() + (area_a / region.dy());
     } else {
       bissect_location = region.xCenter();
+    }
+    if (graphics_) {
+      graphics_->drawLine(odb::Line(bissect_location, region.yMin(), bissect_location, region.yMax()));
     }
     rA = odb::Rect(
         region.xMin(), region.yMin(), bissect_location, region.yMax());
@@ -244,19 +236,24 @@ void MinCutPlacer::KLRecursion(const Graph& adj, const std::vector<int>& vertice
         bissect_location, region.yMin(), region.xMax(), region.yMax());
   } else {
     int bissect_location = 0;
-    if (compact_) {
+    if (false || compact_) {
       bissect_location = region.yMin() + (area_a / region.dx());
     } else {
       bissect_location = region.yCenter();
+    }
+    if (graphics_) {
+      graphics_->drawLine(odb::Line(region.xMin(), bissect_location, region.xMax(), bissect_location));
     }
     rA = odb::Rect(
         region.xMin(), region.yMin(), region.xMax(), bissect_location);
     rB = odb::Rect(
         region.xMin(), bissect_location, region.xMax(), region.yMax());
   }
-
+  graphics_->cellPlot(true);
   KLRecursion(adj, A, rA, depth + 1, pos);
+  graphics_->cellPlot(true);
   KLRecursion(adj, B, rB, depth + 1, pos);
+  graphics_->cellPlot(true);
 }
 
 void MinCutPlacer::KernighanLinPlacement(int threads, bool compact) {
@@ -272,7 +269,7 @@ void MinCutPlacer::KernighanLinPlacement(int threads, bool compact) {
     inst_to_index_[insts[i]] = i;
   }
 
-  std::vector<std::set<int>> adj_set(n);
+  InstanceGraph adj;
 
   for (auto& net : pbc_->getNets()) {
     auto& pins = net->getPins();
@@ -283,44 +280,38 @@ void MinCutPlacer::KernighanLinPlacement(int threads, bool compact) {
       for (int j = i+1; j < pins.size(); j++) { 
         if (pins[j]->isBTerm()) continue;
 
-        adj_set[inst_to_index_[pins[i]->getInstance()]].insert(inst_to_index_[pins[j]->getInstance()]);
-        adj_set[inst_to_index_[pins[j]->getInstance()]].insert(inst_to_index_[pins[i]->getInstance()]);
+        adj[pins[i]->getInstance()][pins[j]->getInstance()] += 1;
+        adj[pins[j]->getInstance()][pins[i]->getInstance()] += 1;
       }
     }
   }
 
-  Graph adj(n);
-  for (int i = 0; i < n; i++) {
-    adj[i] = std::vector<int>(adj_set[i].begin(), adj_set[i].end());
-  }
-
   std::vector<std::pair<int, int>> pos(n);
-  std::vector<int> vertices(n);
-  std::iota(vertices.begin(), vertices.end(), 0);
 
   odb::Rect region = db_->getChip()->getBlock()->getCoreArea();
 
+  float ar = region.dx()/static_cast<float>(region.dy());
   if (compact_) {
     int64_t total_area = 0;
     for (auto& inst : insts) {
       total_area += inst->area();
     }
-    int side = std::sqrt(total_area) / 2;
-
-    odb::Rect new_region = {region.xCenter() - side,
-                            region.yCenter() - side,
-                            region.xCenter() + side,
-                            region.yCenter() + side};
+    int side_x = std::sqrt(total_area*ar);
+    int side_y = total_area / side_x;
+    odb::Rect new_region = {region.xCenter() - (side_x/2),
+                            region.yCenter() - (side_y/2),
+                            region.xCenter() + (side_x/2),
+                            region.yCenter() + (side_y/2)};
     region = new_region;
   }
-  KLRecursion(adj, vertices, region, 0, pos);
+  KLRecursion(adj, pbc_->placeInsts(), region, 0, pos);
 
-  #pragma omp parallel for num_threads(threads)
-  for (int i = 0; i < n; i++) {
-    auto& inst = insts[i];
-    inst->dbSetLocation(pos[i].first, pos[i].second);
-    inst->dbSetPlaced();
-  }
+  // #pragma omp parallel for num_threads(threads)
+  // for (int i = 0; i < n; i++) {
+    // auto& inst = insts[i];
+    // inst->dbSetLocation(pos[i].first, pos[i].second);
+  //   inst->dbSetPlaced();
+  // }
 
   auto block = db_->getChip()->getBlock();
   odb::WireLengthEvaluator eval(block);

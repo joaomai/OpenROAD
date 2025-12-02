@@ -273,6 +273,7 @@ void OpenRoad::init(Tcl_Interp* tcl_interp,
   gpl::initReplace(tcl_interp);
   gpl::initReplaceGraphics(replace_, logger_);
   mcp::initMinCutPlacer(tcl_interp);
+  mcp::initMinCutPlacerGraphics(min_cut_placer_, logger_);
   dpl::initOpendp(tcl_interp);
   fin::initFinale(tcl_interp);
   ram::initRamGen(tcl_interp);

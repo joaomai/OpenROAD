@@ -202,6 +202,11 @@ void GraphicsImpl::drawInitial(gui::Painter& painter)
   }
 }
 
+void GraphicsImpl::drawLine(odb::Line line) {
+  cut_lines_.push_back(line);
+  gui::Gui::get()->redraw();
+}
+
 void GraphicsImpl::drawForce(gui::Painter& painter)
 {
   for (size_t nb_idx = 0; nb_idx < nbVec_.size(); ++nb_idx) {
@@ -483,6 +488,10 @@ void GraphicsImpl::drawMBFF(gui::Painter& painter)
 
 void GraphicsImpl::drawObjects(gui::Painter& painter)
 {
+  painter.setPen(gui::Painter::kCyan, true);
+  for (auto& line : cut_lines_) {
+    painter.drawLine(line);
+  }
   switch (mode_) {
     case Mbff:
       drawMBFF(painter);
@@ -604,7 +613,7 @@ void GraphicsImpl::cellPlotImpl(bool pause)
   gui::Gui::get()->redraw();
   if (pause) {
     reportSelected();
-    gui::Gui::get()->pause();
+    gui::Gui::get()->pause(50);
   }
 }
 
