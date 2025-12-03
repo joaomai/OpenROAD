@@ -55,7 +55,6 @@ bool MinCutPlacer::initPlacer()
     log_->warn(MCP, 2, "Placer already initialized.");
     return true;
   }
-  // Init PlacerBaseCommon
   gpl::PlacerBaseVars pb_vars;
   pbc_ = std::make_shared<gpl::PlacerBaseCommon>(db_, pb_vars, log_);
   if (pbc_->placeInsts().size() == 0) {
@@ -63,7 +62,6 @@ bool MinCutPlacer::initPlacer()
     return false;
   }
 
-  // Init PlacerBase
   pbVec_.push_back(std::make_shared<gpl::PlacerBase>(db_, pbc_, log_));
   for (auto pd : db_->getChip()->getBlock()->getPowerDomains()) {
     if (pd->getGroup()) {
@@ -110,7 +108,7 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
   }
 
   bool improved = true;
-  int bestCut = KLCountCut(adj, vertices, part);
+  int best_cut = KLCountCut(adj, vertices, part);
 
   while (improved) {
     improved = false;
@@ -138,7 +136,7 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
     for (int step = 0; step < n / 2; step++) {
       gpl::Instance* bestA = nullptr;
       gpl::Instance* bestB = nullptr;
-      int bestGain = std::numeric_limits<int>::min();
+      int best_gain = std::numeric_limits<int>::min();
 
       for (auto& a : freeA) {
         if (!locked[a]) {
@@ -147,8 +145,8 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
               auto& adjA = adj.at(a);
               int gain = D[a] + D[b]
                          - (2 * (adjA.contains(b) ? adjA.at(b) : 0));
-              if (gain > bestGain) {
-                bestGain = gain;
+              if (gain > best_gain) {
+                best_gain = gain;
                 bestA = a;
                 bestB = b;
               }
@@ -161,16 +159,14 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
         break;
       }
 
-      // Lock and record move
       locked[bestA] = true;
       locked[bestB] = true;
-      moves.push_back({bestA, bestB, bestGain});
+      moves.push_back({bestA, bestB, best_gain});
 
       int partA_old = part[bestA];
       int partB_old = part[bestB];
       part[bestA] = 1;
       part[bestB] = 0;
-      // update D values
       for (auto& u : vertices) if (!locked[u]) {
           for (auto& [v, w] : adj.at(u)) {
               if (v == bestA) D[u] += (part[u] == partA_old ? 2 : -2);
@@ -179,7 +175,6 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
       }
     }
 
-    // compute cumulative gains
     std::vector<int> G(moves.size());
     G[0] = moves[0].gain;
     for (int i = 1; i < moves.size(); i++) {
@@ -198,14 +193,14 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
       {
         std::swap(part[moves[i].a], part[moves[i].b]);
       }
-      bestCut = KLCountCut(adj, vertices, part);
+      best_cut = KLCountCut(adj, vertices, part);
     }
   }
 
-  return {.part=part, .cuts=bestCut};
+  return {.part=part, .cuts=best_cut};
 }
 
-void MinCutPlacer::KLRecursion(const InstanceGraph& adj, const InstanceVec& vertices, const odb::Rect& region, int depth, std::vector<std::pair<int, int>>& pos)
+void MinCutPlacer::KLRecursion(const InstanceGraph& adj, const InstanceVec& vertices, const odb::Rect& region, int depth)
 {
   if (vertices.empty()) return;
   log_->report("Partition depth = {} vertices = {} rect {}", depth, vertices.size(), region);
@@ -233,39 +228,39 @@ void MinCutPlacer::KLRecursion(const InstanceGraph& adj, const InstanceVec& vert
   bool vertical = (depth % 2 == 0);
   odb::Rect rA, rB;
   if (vertical) {
-    int bissect_location = 0;
+    int bisect_location = 0;
     if (compact_) {
-      bissect_location = region.xMin() + (area_a / region.dy());
+      bisect_location = region.xMin() + (area_a / region.dy());
     } else {
-      bissect_location = region.xCenter();
+      bisect_location = region.xCenter();
     }
     if (graphics_ && graphics_->enabled()) {
-      graphics_->drawLine(odb::Line(bissect_location, region.yMin(), bissect_location, region.yMax()));
+      graphics_->drawLine(odb::Line(bisect_location, region.yMin(), bisect_location, region.yMax()));
     }
     rA = odb::Rect(
-        region.xMin(), region.yMin(), bissect_location, region.yMax());
+        region.xMin(), region.yMin(), bisect_location, region.yMax());
     rB = odb::Rect(
-        bissect_location, region.yMin(), region.xMax(), region.yMax());
+        bisect_location, region.yMin(), region.xMax(), region.yMax());
   } else {
-    int bissect_location = 0;
+    int bisect_location = 0;
     if (compact_) {
-      bissect_location = region.yMin() + (area_a / region.dx());
+      bisect_location = region.yMin() + (area_a / region.dx());
     } else {
-      bissect_location = region.yCenter();
+      bisect_location = region.yCenter();
     }
     if (graphics_ && graphics_->enabled()) {
-      graphics_->drawLine(odb::Line(region.xMin(), bissect_location, region.xMax(), bissect_location));
+      graphics_->drawLine(odb::Line(region.xMin(), bisect_location, region.xMax(), bisect_location));
     }
     rA = odb::Rect(
-        region.xMin(), region.yMin(), region.xMax(), bissect_location);
+        region.xMin(), region.yMin(), region.xMax(), bisect_location);
     rB = odb::Rect(
-        region.xMin(), bissect_location, region.xMax(), region.yMax());
+        region.xMin(), bisect_location, region.xMax(), region.yMax());
   }
 
   if (graphics_ && graphics_->enabled()) graphics_->cellPlot(true);
-  KLRecursion(adj, A, rA, depth + 1, pos);
+  KLRecursion(adj, A, rA, depth + 1);
   if (graphics_ && graphics_->enabled()) graphics_->cellPlot(true);
-  KLRecursion(adj, B, rB, depth + 1, pos);
+  KLRecursion(adj, B, rB, depth + 1);
   if (graphics_ && graphics_->enabled()) graphics_->cellPlot(true);
 }
 
@@ -303,8 +298,8 @@ void MinCutPlacer::KernighanLinPlacement(int threads, bool compact) {
 
   odb::Rect region = db_->getChip()->getBlock()->getCoreArea();
 
-  float ar = region.dx()/static_cast<float>(region.dy());
   if (compact_) {
+    float ar = region.dx()/static_cast<float>(region.dy());
     int64_t total_area = 0;
     for (auto& inst : insts) {
       total_area += inst->area();
@@ -317,14 +312,7 @@ void MinCutPlacer::KernighanLinPlacement(int threads, bool compact) {
                             region.yCenter() + (side_y/2)};
     region = new_region;
   }
-  KLRecursion(adj, pbc_->placeInsts(), region, 0, pos);
-
-  // #pragma omp parallel for num_threads(threads)
-  // for (int i = 0; i < n; i++) {
-    // auto& inst = insts[i];
-    // inst->dbSetLocation(pos[i].first, pos[i].second);
-  //   inst->dbSetPlaced();
-  // }
+  KLRecursion(adj, pbc_->placeInsts(), region, 0);
 
   auto block = db_->getChip()->getBlock();
   odb::WireLengthEvaluator eval(block);
@@ -373,7 +361,6 @@ void MinCutPlacer::randomPlace(int threads)
 
 void MinCutPlacer::clear()
 {
-  // clear instances
   pbc_.reset();
   pbVec_.clear();
 }

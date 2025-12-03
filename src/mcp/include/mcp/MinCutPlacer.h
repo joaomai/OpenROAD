@@ -47,7 +47,7 @@ class MinCutPlacer
 
   int KLCountCut(const InstanceGraph& adj, const InstanceVec& vertices, const InstanceMap& part);
   Partition KLPartitioner(const InstanceGraph& adj, const InstanceVec& vertices);
-  void KLRecursion(const InstanceGraph& adj, const InstanceVec& vertices, const odb::Rect& region, int depth, std::vector<std::pair<int, int>>& pos);
+  void KLRecursion(const InstanceGraph& adj, const InstanceVec& vertices, const odb::Rect& region, int depth);
 
   odb::dbDatabase* db_;
   utl::Logger* log_;
