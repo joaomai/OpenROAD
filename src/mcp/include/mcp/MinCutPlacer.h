@@ -25,9 +25,9 @@
 
 namespace mcp {
 
-using InstanceGraph = std::unordered_map<gpl::Instance*, std::unordered_map<gpl::Instance*, int>>;
+using InstanceGraph = std::map<gpl::Instance*, std::map<gpl::Instance*, int>>;
 using InstanceVec = std::vector<gpl::Instance*>;
-using InstanceMap = std::unordered_map<gpl::Instance*, int>;
+using InstanceMap = std::map<gpl::Instance*, int>;
 
 class MinCutPlacer
 {

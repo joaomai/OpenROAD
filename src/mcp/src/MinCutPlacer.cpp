@@ -6,6 +6,7 @@
 #include <limits>
 #include <numeric>
 #include <random>
+#include <ranges>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -102,7 +103,7 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
     area_index.emplace_back(inst->area(), inst);
   }
 
-  std::ranges::sort(area_index);
+  std::ranges::sort(std::ranges::reverse_view(area_index));
   for (int i = 0; i < n; i++) {
     part[area_index[i].second] = i % 2;
   }
@@ -194,6 +195,7 @@ MinCutPlacer::Partition MinCutPlacer::KLPartitioner(const InstanceGraph& adj, co
         std::swap(part[moves[i].a], part[moves[i].b]);
       }
       best_cut = KLCountCut(adj, vertices, part);
+      log_->report("Improved {}", best_cut);
     }
   }
 
